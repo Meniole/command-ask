@@ -1,11 +1,9 @@
 import { Context } from "../types";
+import { SimilarComment, SimilarIssue, TreeNode } from "../types/github-types";
 import { TokenLimits } from "../types/llm";
-import { fetchIssueComments } from "./issue-fetching";
 import { splitKey } from "./issue";
-import { logger } from "./errors";
-import { TreeNode } from "../types/github-types";
-import { updateTokenCount, createDefaultTokenLimits } from "./token-utils";
-import { SimilarIssue, SimilarComment } from "../types/github-types";
+import { fetchIssueComments } from "./issue-fetching";
+import { createDefaultTokenLimits, updateTokenCount } from "./token-utils";
 
 const SIMILAR_ISSUE_IDENTIFIER = "Similar Issues:";
 const SIMILAR_COMMENT_IDENTIFIER = "Similar Comments:";
@@ -17,11 +15,11 @@ function validateGitHubKey(key: string): boolean {
 
   const [owner, repo, number] = parts;
 
-  if (!owner || owner === "issues" || !/^[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?$/i.test(owner)) {
+  if (!owner || owner === "issues" || !/^[a-zA-Z0-9](?:[a-zA-Z0-9.-]*[a-zA-Z0-9])?$/i.test(owner)) {
     return false;
   }
 
-  if (!repo || !/^[a-zA-Z0-9-_]+$/i.test(repo)) {
+  if (!repo || !/^[a-zA-Z0-9._-]+$/i.test(repo)) {
     return false;
   }
 
@@ -120,6 +118,7 @@ async function buildTree(
   similarIssues?: SimilarIssue[],
   similarComments?: SimilarComment[]
 ): Promise<{ tree: TreeNode | null }> {
+  const { logger } = context;
   const processedNodes = new Map<string, TreeNode>();
   // Extract issue/PR number based on payload type
   let issueNumber;
@@ -171,7 +170,7 @@ async function buildTree(
     processingStack.add(key);
 
     try {
-      const [owner, repo, issueNum] = splitKey(key);
+      const [owner, repo, issueNum] = splitKey(context, key);
       const response = await fetchIssueComments({ context, owner, repo, issueNum: parseInt(issueNum) }, tokenLimit);
       const issue = response.issue;
 
@@ -527,6 +526,7 @@ export async function formatChatHistory(
   similarComments: SimilarComment[],
   availableTokens?: number
 ): Promise<string[]> {
+  const { logger } = context;
   const { tree, tokenLimits } = await buildChatHistoryTree(context, maxDepth, similarComments, similarIssues);
 
   if (!tree) {

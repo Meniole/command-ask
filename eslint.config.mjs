@@ -31,7 +31,7 @@ export default tsEslint.config({
       },
     ],
     "func-style": [
-      "warn",
+      "error",
       "declaration",
       {
         allowArrowFunctions: false,

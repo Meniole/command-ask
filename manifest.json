@@ -32,6 +32,11 @@
         "examples": ["https://openrouter.ai/api/v1", "https://api.openai.com/v1"],
         "type": "string"
       },
+      "maxRetryAttempts": {
+        "default": 5,
+        "description": "The number of times to retry AI prompts",
+        "type": "number"
+      },
       "similarityThreshold": {
         "default": 0.9,
         "description": "When fetching embeddings context, the similarity threshold to use (1- similarityThreshold)",

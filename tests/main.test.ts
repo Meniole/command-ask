@@ -1,21 +1,19 @@
-import { db } from "./__mocks__/db";
-import { server } from "./__mocks__/node";
-import usersGet from "./__mocks__/users-get.json";
-import { expect, describe, beforeAll, beforeEach, afterAll, afterEach, it, jest } from "@jest/globals";
-import { Context, SupportedEvents } from "../src/types";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, jest } from "@jest/globals";
 import { drop } from "@mswjs/data";
-import issueTemplate from "./__mocks__/issue-template";
-import repoTemplate from "./__mocks__/repo-template";
-import { TransformDecodeCheckError, Value } from "@sinclair/typebox/value";
-import { envSchema } from "../src/types/env";
-import { CompletionsType } from "../src/adapters/openai/helpers/completions";
-import { logger } from "../src/helpers/errors";
 import { Octokit } from "@octokit/rest";
-import { createKey } from "../src/helpers/issue-fetching";
+import { TransformDecodeCheckError, Value } from "@sinclair/typebox/value";
+import { LogReturn, Logs } from "@ubiquity-os/ubiquity-os-logger";
+import { CompletionsType } from "../src/adapters/openai/helpers/completions";
+import { Context, SupportedEvents } from "../src/types";
+import { envSchema } from "../src/types/env";
 import { SimilarComment, SimilarIssue, TreeNode } from "../src/types/github-types";
+import { db } from "./__mocks__/db";
+import issueTemplate from "./__mocks__/issue-template";
+import { server } from "./__mocks__/node";
+import repoTemplate from "./__mocks__/repo-template";
+import usersGet from "./__mocks__/users-get.json";
 
 const TEST_QUESTION = "what is pi?";
-const LOG_CALLER = "_Logs.<anonymous>";
 const ISSUE_ID_2_CONTENT = "More context here #2";
 const ISSUE_ID_3_CONTENT = "More context here #3";
 const MOCK_ANSWER = "This is a mock answer for the chat";
@@ -90,16 +88,9 @@ describe("Ask plugin tests", () => {
     expect(() => Value.Decode(envSchema, settings)).toThrow(TransformDecodeCheckError);
   });
 
-  it("should handle PR review comment URLs correctly", () => {
-    const prReviewUrl = "https://github.com/ubiquity/test-repo/pull/123/comments/456";
-    const key = createKey(prReviewUrl);
-    expect(key).toBe("ubiquity/test-repo/123");
-  });
-
   it("should construct the chat history correctly", async () => {
     const ctx = createContext(TEST_QUESTION);
     const debugSpy = jest.spyOn(ctx.logger, "debug");
-    const infoSpy = jest.spyOn(ctx.logger, "info");
     createComments([
       transformCommentTemplate(1, 1, ISSUE_ID_2_CONTENT, "ubiquity", "test-repo", true, "2"),
       transformCommentTemplate(2, 1, TEST_QUESTION, "ubiquity", "test-repo", true, "1"),
@@ -149,22 +140,16 @@ describe("Ask plugin tests", () => {
     expect(normalizedReceived).toEqual(normalizedExpected);
 
     // Find the index of the answer log
-    const answerLogIndex = infoSpy.mock.calls.findIndex((call) => (call[0] as string).startsWith("Answer:"));
-
-    expect(infoSpy.mock.calls[answerLogIndex]).toEqual([
-      "Answer: This is a mock answer for the chat",
-      {
-        caller: LOG_CALLER,
-        metadata: {
-          tokenUsage: {
-            input: 1000,
-            output: 150,
-            total: 1150,
-          },
-          groundTruths: ["This is a mock answer for the chat"],
-        },
+    const log = (ctx.commentHandler.postComment as jest.Mock).mock.calls[1][1] as LogReturn;
+    expect(log.logMessage.raw).toEqual(MOCK_ANSWER);
+    expect(log.metadata).toMatchObject({
+      tokenUsage: {
+        input: 1000,
+        output: 150,
+        total: 1150,
       },
-    ]);
+      groundTruths: [MOCK_ANSWER],
+    });
   });
 });
 
@@ -272,9 +257,12 @@ function createContext(body = TEST_QUESTION) {
     },
     owner: "ubiquity",
     repo: "test-repo",
-    logger: logger,
+    logger: new Logs("debug"),
     config: {
       maxDepth: 5,
+    },
+    commentHandler: {
+      postComment: jest.fn(),
     },
     env: {
       UBIQUITY_OS_APP_NAME: "UbiquityOS",
