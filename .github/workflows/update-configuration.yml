@@ -12,7 +12,7 @@ jobs:
 
     steps:
       - name: Update Manifest and Commit Changes
-        uses: Meniole/action-deploy-plugin@main
+        uses: Meniole/action-deploy-plugin@meniole-main
 
         with:
           treatAsEsm: true
