@@ -18,7 +18,6 @@ jobs:
           treatAsEsm: true
           sourcemap: true
           pluginEntry: ${{ github.workspace }}/src/main.ts
-          commitMessage: "chore: updated manifest.json and dist build"
           nodeVersion: "20.10.0"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
