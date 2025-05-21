@@ -16,7 +16,7 @@ jobs:
 
         with:
           treatAsEsm: true
-          sourcemap: true
+          sourcemap: false
           pluginEntry: ${{ github.workspace }}/src/main.ts
           nodeVersion: "20.10.0"
         env:
